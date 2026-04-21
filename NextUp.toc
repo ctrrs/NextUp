@@ -1,0 +1,12 @@
+## Interface: 120001, 120005
+## Title: Next Up
+## Notes: Minimalistic display of the next BigWigs bar.
+## Author: fae
+## Version: 1.1.0
+## Category: fae Utilities
+## IconTexture: Interface\AddOns\NextUp\logo.tga
+## RequiredDeps: BigWigs
+## SavedVariables: NextUpDB
+
+embeds.xml
+Core.lua
