@@ -7,6 +7,8 @@
 ## IconTexture: Interface\AddOns\NextUp\logo.tga
 ## RequiredDeps: BigWigs
 ## SavedVariables: NextUpDB
+## X-Wago-ID: n6VL3OGd
+## X-Curse-Project-ID: 1520783
 
 embeds.xml
 Core.lua
