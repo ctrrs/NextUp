@@ -1,7 +1,33 @@
 local addonName, NextUp = ...
-NextUp = LibStub("AceAddon-3.0"):NewAddon(NextUp, addonName, "AceEvent-3.0", "AceConsole-3.0")
+-- Not mixing in "AceEvent-3.0": its global frame "AceEvent30Frame" gets
+-- attributed to whichever addon loads it first, so every other AceEvent
+-- consumer's dispatch shows up under that addon in the profiler. Use a
+-- private CreateFrame shim below to keep self:RegisterEvent working without
+-- touching the global frame.
+NextUp = LibStub("AceAddon-3.0"):NewAddon(NextUp, addonName, "AceConsole-3.0")
 local LSM = LibStub("LibSharedMedia-3.0")
 local ACD = LibStub("AceConfigDialog-3.0")
+
+-- Private event-frame shim. Drop-in for the AceEvent mixin we removed above.
+do
+    local eventFrame = CreateFrame("Frame")
+    local handlers = {}
+
+    function NextUp:RegisterEvent(event, handlerName)
+        eventFrame:RegisterEvent(event)
+        handlers[event] = handlerName or event
+    end
+
+    function NextUp:UnregisterEvent(event)
+        eventFrame:UnregisterEvent(event)
+        handlers[event] = nil
+    end
+
+    eventFrame:SetScript("OnEvent", function(_, event, ...)
+        local h = handlers[event]
+        if h and NextUp[h] then NextUp[h](NextUp, event, ...) end
+    end)
+end
 
 -- Local references
 local GetTime = GetTime
@@ -24,21 +50,21 @@ local PREDEFINED_COLORS = {
 -- Configuration Defaults
 local defaults = {
     profile = {
-        fontSize = 32,
-        fontName = "Friz Quadrata TT",
+        fontSize = 24,
+        fontName = "Expressway",
         outline = "OUTLINE",
-        shadow = true,
-        textFormat = "colon",
+        shadow = false,
+        textFormat = "in",
         showDecimals = true,
-        decimalThreshold = 3,
+        decimalThreshold = 10,
         colorLogic = "semantic",
         colorMode = "random",
         fixedColor = {r = 1, g = 1, b = 1, a = 1},
         posX = 0,
-        posY = 150,
+        posY = 115,
         maxTimers = 1,
-        growthDirection = "down",
-        threshold = 30,
+        growthDirection = "up",
+        threshold = 15,
         enableInRaid = true,
         enableInDungeon = true,
         enableInWorld = true,
@@ -497,10 +523,39 @@ local function GetOptions()
                         order = 2,
                     },
                 }
+            },
+            dangerGroup = {
+                name = "Danger Zone",
+                type = "group",
+                inline = true,
+                order = 100,
+                args = {
+                    reset = {
+                        name = "Reset to Defaults",
+                        type = "execute",
+                        desc = "Revert all settings to the factory defaults. This will reload the UI.",
+                        func = function() StaticPopup_Show("NEXTUP_CONFIRM_RESET") end,
+                        width = "full",
+                        order = 1,
+                    },
+                }
             }
         }
     }
 end
+
+StaticPopupDialogs["NEXTUP_CONFIRM_RESET"] = {
+    text = "Are you sure you want to reset Next Up settings to defaults? This will reload the UI.",
+    button1 = "Yes",
+    button2 = "No",
+    OnAccept = function()
+        NextUpDB = {}
+        ReloadUI()
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+}
 
 function NextUp:OnInitialize()
     self.db = LibStub("AceDB-3.0"):New("NextUpDB", defaults, true)
