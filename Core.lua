@@ -87,6 +87,7 @@ ticker:Hide()
 local timerLines = {}
 local activeBars = {}
 local sortedKeys = {}
+local barCounter = 0
 NextUp.testMode = false
 
 -- Zone Check
@@ -254,9 +255,29 @@ function NextUp:BigWigs_StartBar(event, module, key, barText, time)
         actualModule, actualKey, actualText, actualTime = event, module, key, barText
     end
 
-    local finalKey = actualKey or actualText or ("bar_" .. GetTime())
+    -- In WoW 12.0+ instances, spell names (barText) are secret values and cannot
+    -- be used as table keys or in string.format. Build safe key and display text.
+    local finalKey
+    if actualKey ~= nil and not issecretvalue(actualKey) then
+        finalKey = actualKey
+    elseif actualText ~= nil and not issecretvalue(actualText) then
+        finalKey = actualText
+    else
+        barCounter = barCounter + 1
+        finalKey = "bar_" .. barCounter
+    end
+
+    local displayText
+    if actualText ~= nil and not issecretvalue(actualText) then
+        displayText = actualText
+    elseif actualKey ~= nil and not issecretvalue(actualKey) then
+        displayText = tostring(actualKey)
+    else
+        displayText = "?"
+    end
+
     activeBars[finalKey] = {
-        text = actualText or actualKey or "Unknown",
+        text = displayText,
         expiration = GetTime() + (tonumber(actualTime) or 0),
         color = PREDEFINED_COLORS[math.random(#PREDEFINED_COLORS)],
         module = actualModule
@@ -266,7 +287,8 @@ end
 
 function NextUp:BigWigs_StopBar(event, module, key)
     local k = (type(event) == "string" and event:find("BigWigs_")) and key or module
-    if k and activeBars[k] then
+    -- Secret keys can't be looked up; bar will expire naturally
+    if k ~= nil and not issecretvalue(k) and activeBars[k] then
         activeBars[k] = nil
         self:RefreshLayout()
     end
